@@ -22,14 +22,14 @@ class GoogleShopParser:
                 name = product.find('h4', class_='Xjkr3b').text
                 price = product.find('span', class_='a8Pemb OFFNJ').text
                 shop = product.find('div', class_='aULzUe IuHnof').text
-                link = product.find('div', class_='zLPF4b').find('div').find('a').get('href')[9:]
+                url = product.find('div', class_='zLPF4b').find('div').find('a').get('href')[9:]
                 image = product.find('div', class_="ArOc1c").find('img')['src']
                 products.append(
                     {
                         'name': name,
                         'price': price,
                         'shop': shop,
-                        'link': link,
+                        'url': url,
                         'image': image
                     }
                 )
