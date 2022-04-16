@@ -32,3 +32,12 @@ class Paginator:
         start = self.current_page * self.page_size
         slice_ = slice(start, start + self.page_size, 1)
         return self.data[slice_]
+
+    def get_allowed_method(self) -> List[str]:
+        methods = []
+        if self.current_page - 1 >= 0:
+            methods.append('prev')
+        if self.current_page + 1 < self.count_page:
+            methods.append('next')
+
+        return methods
