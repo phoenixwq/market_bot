@@ -19,11 +19,12 @@ def get_product_text_message(product: dict) -> str:
 
 def get_paginate_keyboard(methods: List[str]) -> types.ReplyKeyboardMarkup:
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    if len(methods) == 2:
+    count_methods = len(methods)
+    if count_methods == 2:
         keyboard.row(
             types.KeyboardButton("prev"), types.KeyboardButton("next"),
         ).add(types.KeyboardButton("exit"))
-    else:
+    elif count_methods == 1:
         if methods[0] == "next":
             keyboard.row(
                 types.KeyboardButton("exit"), types.KeyboardButton("next"),
@@ -32,5 +33,8 @@ def get_paginate_keyboard(methods: List[str]) -> types.ReplyKeyboardMarkup:
             keyboard.row(
                 types.KeyboardButton("prev"), types.KeyboardButton("exit"),
             )
-
+    else:
+        keyboard.row(
+            types.KeyboardButton("exit"),
+        )
     return keyboard

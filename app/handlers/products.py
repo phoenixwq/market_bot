@@ -72,14 +72,12 @@ async def page_view(message: types.Message, state: FSMContext):
         text = get_product_text_message(product)
         image = urllib.request.urlopen(product['image']).read()
         await bot.send_photo(chat_id=message.from_user.id, photo=image, caption=text,
-                             disable_notification=True, parse_mode="HTML", reply_markup=keyboard,
-                             caption_entities=product)
+                             disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
 
     await message.answer(f"page: {paginator.current_page + 1}", reply_markup=paginate_keyboard)
 
 
 async def add_product_in_user_favorite(call: types.CallbackQuery):
-    await call.answer(text="Product added to favorites!", show_alert=True)
     data = json.loads(call.message.as_json())
     name, price, shop = data.get("caption").split('\n')
     name = name[3:]
@@ -90,6 +88,7 @@ async def add_product_in_user_favorite(call: types.CallbackQuery):
         user = s.query(User).filter_by(chat_id=call.from_user.id).first()
         product = Product(name=name, price=price, shop=shop, url=url, user=user.id)
         s.add(product)
+    await call.answer(text="Product added to favorites!", show_alert=True)
 
 
 def register_products_handlers(dp: Dispatcher):
