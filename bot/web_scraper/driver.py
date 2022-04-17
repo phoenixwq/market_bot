@@ -1,10 +1,16 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from config import BASE_DIR
 import os
 
 
 class WebDriver:
-    driver_path = os.path.abspath('app/parser/drivers/chromedriver')
+    driver_path = os.path.join(BASE_DIR, "drivers/chromedriver")
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(WebDriver, cls).__new__(cls)
+        return cls.instance
 
     def __init__(self):
         self._driver = self._create_driver()
@@ -26,15 +32,8 @@ class WebDriver:
 
     def get_page_content(self, url: str) -> str:
         self._driver.get(url)
-        return self._driver.page_source
+        content = self._driver.page_source
+        return content
 
-    def close_driver(self):
-        self._driver.close()
-
-    def __enter__(self):
-        if self._driver is None:
-            self._driver = self._create_driver()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close_driver()
+    def quit_driver(self):
+        self._driver.quit()
