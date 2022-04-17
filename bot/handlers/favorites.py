@@ -1,0 +1,95 @@
+from aiogram import types
+from .utils import get_product_text_message, get_paginate_keyboard
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from .paginator import Paginator
+from aiogram.dispatcher.fsm.context import FSMContext
+from aiogram.dispatcher.router import Router
+from bot.db.base import session
+from bot.db.tables import User, Product
+from aiogram.methods import SendPhoto
+
+PAGE_SIZE = 3
+
+router = Router()
+
+
+class ViewFavorites(StatesGroup):
+    load_data = State()
+
+
+@router.message(commands=["favorites"])
+async def favorites_load_data(message: types.Message, state: FSMContext):
+    with session() as s:
+        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        products = s.query(Product).filter_by(user=user.id).all()
+        data = []
+        for product in products:
+            product_data: dict = {column.name: getattr(product, column.name) for column in product.__table__.columns}
+            data.append(product_data)
+
+        paginator = Paginator(data, PAGE_SIZE)
+        await message.answer("My favorites:", reply_markup=get_paginate_keyboard(paginator))
+        await state.update_data(paginator=paginator)
+        await state.update_data(paginator=paginator)
+        for product in paginator.current():
+            keyboard = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(text="Remove from favorites",
+                                                   callback_data="remove_product_from_favorites")
+                    ]
+                ]
+            )
+            text: str = get_product_text_message(product)
+            await SendPhoto(chat_id=message.from_user.id, photo=product.get('image'), caption=text,
+                            disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
+
+        await state.set_state(ViewFavorites.load_data)
+
+
+@router.message(ViewFavorites.load_data)
+async def page_view(message: types.Message, state: FSMContext):
+    user_message = message.text.lower()
+    if user_message not in ('next', 'prev', 'exit'):
+        await message.answer("Please use the keyboard bellow")
+        return
+    if user_message == "exit":
+        await message.answer("searched completed!", reply_markup=types.ReplyKeyboardRemove())
+        await state.clear()
+        return
+
+    data = await state.get_data()
+    paginator: Paginator = data.get("paginator")
+    try:
+        if user_message == "next":
+            products = paginator.next()
+        else:
+            products = paginator.previous()
+    except IndexError:
+        await message.answer("page not found!")
+        return
+
+    await state.update_data(paginator=paginator)
+    for product in products:
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="Remove from favorites", callback_data="remove_product_from_favorites")]
+            ]
+        )
+        text: str = get_product_text_message(product)
+        photo = types.URLInputFile(product.get('image'), filename=product.get('name'))
+        await SendPhoto(chat_id=message.from_user.id, photo=photo, caption=text,
+                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
+
+    await message.answer(f"page: {paginator.current_page + 1}", reply_markup=get_paginate_keyboard(paginator))
+
+
+@router.callback_query(lambda query: query.data == "remove_product_from_favorites")
+async def remove_product_from_favorites(call: types.CallbackQuery):
+    await call.answer(text="Product remove from favorites!", show_alert=True)
+    url = call.message.caption_entities[0].url
+    with session() as s:
+        user = s.query(User).filter_by(chat_id=call.from_user.id).first()
+        product = s.query(Product).filter_by(url=url, user=user.id).one_or_none()
+        if product is not None:
+            s.delete(product)
