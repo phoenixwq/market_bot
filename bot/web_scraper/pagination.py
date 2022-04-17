@@ -1,17 +1,15 @@
 import math
 import pandas as pd
+from scraper import ScraperData
 
 
 class Paginator:
-    def __init__(self, csv_file: str, page_size: int):
-        with open(csv_file) as file:
-            self.count_rows = -1
-            for _ in file:
-                self.count_rows += 1
-        self.csv_file = csv_file
+    def __init__(self, data: ScraperData, page_size: int):
+        self.csv_file = data.file
+        self.size = data.size
         self.page_size = page_size
         self.current_page = 0
-        self.count_page = math.ceil(self.count_rows / self.page_size)
+        self.count_page = math.ceil(self.size / self.page_size)
 
     def next(self) -> pd.DataFrame:
         if self.current_page + 1 > self.count_page:
