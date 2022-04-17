@@ -1,6 +1,6 @@
 import math
 import pandas as pd
-from scraper import ScraperData
+from .scraper import ScraperData
 
 
 class Paginator:
@@ -32,7 +32,7 @@ class Paginator:
 
     def __get_page(self) -> pd.DataFrame:
         start = self.current_page * self.page_size
-        return pd.read_csv(self.csv_file, skiprows=start, nrows=start + self.page_size)
+        return pd.read_csv(self.csv_file, skiprows=start, nrows=self.page_size,delimiter=';')
 
     def has_next(self):
         return self.current_page + 1 < self.count_page

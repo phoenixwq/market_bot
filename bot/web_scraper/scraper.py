@@ -1,8 +1,8 @@
 import csv
 import os
-from driver import WebDriver
+from .driver import WebDriver
 from bs4 import BeautifulSoup
-from config import BASE_DIR
+from .config import BASE_DIR
 from datetime import datetime
 
 
@@ -29,8 +29,8 @@ class GoogleShoppingScraper:
         filename = str(datetime.now().timestamp()) + ".csv"
         path_file = os.path.join(BASE_DIR, f"data/{filename}")
         size = 0
-        with open(path_file, "w", encoding='UTF8', newline='') as csv_file:
-            writer = csv.writer(csv_file, delimiter=',')
+        with open(path_file, "w", newline='') as csv_file:
+            writer = csv.writer(csv_file, delimiter=';')
             header = ["name", "price", "shop", "url", "image"]
             writer.writerow(header)
 

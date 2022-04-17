@@ -1,6 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from config import BASE_DIR
+from .config import BASE_DIR
 import os
 
 
