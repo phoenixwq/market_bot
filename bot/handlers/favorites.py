@@ -1,12 +1,11 @@
 from aiogram import types
-from .utils import get_product_text_message, get_paginate_keyboard
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from .paginator import Paginator
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
 from bot.db.base import session
 from bot.db.tables import User, Product
-from aiogram.methods import SendPhoto
+from .utils import send_page_to_user, get_paginate_keyboard
 
 PAGE_SIZE = 3
 
@@ -30,20 +29,8 @@ async def favorites_load_data(message: types.Message, state: FSMContext):
         paginator = Paginator(data, PAGE_SIZE)
         await message.answer("My favorites:", reply_markup=get_paginate_keyboard(paginator))
         await state.update_data(paginator=paginator)
-        await state.update_data(paginator=paginator)
-        for product in paginator.current():
-            keyboard = types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        types.InlineKeyboardButton(text="Remove from favorites",
-                                                   callback_data="remove_product_from_favorites")
-                    ]
-                ]
-            )
-            text: str = get_product_text_message(product)
-            await SendPhoto(chat_id=message.from_user.id, photo=product.get('image'), caption=text,
-                            disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
-
+        await send_page_to_user(message.from_user.id, paginator.current(), text='Remove from favorites',
+                                callback_data='remove_product_from_favorites')
         await state.set_state(ViewFavorites.load_data)
 
 
@@ -70,17 +57,8 @@ async def page_view(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(paginator=paginator)
-    for product in products:
-        keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="Remove from favorites", callback_data="remove_product_from_favorites")]
-            ]
-        )
-        text: str = get_product_text_message(product)
-        photo = types.URLInputFile(product.get('image'), filename=product.get('name'))
-        await SendPhoto(chat_id=message.from_user.id, photo=photo, caption=text,
-                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
-
+    await send_page_to_user(message.from_user.id, products, text='Remove from favorites',
+                            callback_data='remove_product_from_favorites')
     await message.answer(f"page: {paginator.current_page + 1}", reply_markup=get_paginate_keyboard(paginator))
 
 

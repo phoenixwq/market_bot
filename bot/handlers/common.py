@@ -1,4 +1,3 @@
-from aiogram import Dispatcher
 from aiogram import types
 from bot.db.tables import User
 from bot.db.base import get_or_create

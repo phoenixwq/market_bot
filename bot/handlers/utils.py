@@ -1,9 +1,7 @@
 from aiogram import types
-from typing import List
 import aiogram.utils.markdown as fmt
 from aiogram.utils.keyboard import *
-
-from bot.handlers.paginator import Paginator
+from aiogram.methods import SendPhoto
 
 
 def get_product_text_message(product) -> fmt:
@@ -29,3 +27,19 @@ def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
         [types.KeyboardButton(text="exit")]
     ]
     return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+async def send_page_to_user(chat_id: int, page: List[dict], **button_kwargs):
+    for product in page:
+        keyboard = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(**button_kwargs)]
+            ]
+        )
+        text: str = get_product_text_message(product)
+        photo = product.get('image')
+        if photo.startswith("http"):
+            photo = types.URLInputFile(photo, filename=product.get('name'))
+
+        await SendPhoto(chat_id=chat_id, photo=photo, caption=text,
+                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)

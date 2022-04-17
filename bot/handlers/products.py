@@ -1,13 +1,11 @@
-from aiogram.methods import SendPhoto
 from aiogram.dispatcher.router import Router
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
-from aiogram import types
 from bot.web_scraper import Scraper
-from .paginator import Paginator
 from .utils import *
 from bot.db.base import session
 from bot.db.tables import User, Product
+from .paginator import Paginator
 
 PAGE_SIZE = 3
 
@@ -37,17 +35,8 @@ async def load_data(message: types.Message, state: FSMContext):
         reply_markup=get_paginate_keyboard(paginator)
     )
     await state.update_data(paginator=paginator)
-    for product in paginator.current():
-        keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="Add to favorites", callback_data="add_product_to_favorites")]
-            ]
-        )
-        text: str = get_product_text_message(product)
-        photo = types.URLInputFile(product.get('image'), filename=product.get('name'))
-        await SendPhoto(chat_id=message.from_user.id, photo=photo, caption=text,
-                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
-
+    await send_page_to_user(message.from_user.id, paginator.current(), text='Add to favorites',
+                            callback_data='add_product_to_favorites')
     await state.set_state(SearchProduct.load_data)
 
 
@@ -74,21 +63,12 @@ async def page_view(message: types.Message, state: FSMContext):
         return
 
     await state.update_data(paginator=paginator)
-    for product in products:
-        keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="Add to favorites", callback_data="add_product_to_favorites")]
-            ]
-        )
-        text: str = get_product_text_message(product)
-        photo = types.URLInputFile(product.get('image'), filename=product.get('name'))
-        await SendPhoto(chat_id=message.from_user.id, photo=photo, caption=text,
-                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
-
+    await send_page_to_user(message.from_user.id, products, text='Add to favorites',
+                            callback_data='add_product_to_favorites')
     await message.answer(f"page: {paginator.current_page + 1}", reply_markup=get_paginate_keyboard(paginator))
 
 
-@router.callback_query(lambda query: query.data == "add_product_to_favorites",)
+@router.callback_query(lambda query: query.data == "add_product_to_favorites", )
 async def add_product_in_user_favorite(call: types.CallbackQuery):
     import re
     name, price, shop = re.match(r"name: ([\w\W]*)\nprice: ([\w\W]*)\nshop: ([\w\W]*)", call.message.caption).groups()
