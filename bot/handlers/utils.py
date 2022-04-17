@@ -1,7 +1,9 @@
-# from aiogram.utils.emoji import emojize
 from aiogram import types
 from typing import List
 import aiogram.utils.markdown as fmt
+from aiogram.utils.keyboard import *
+
+from bot.handlers.paginator import Paginator
 
 
 def get_product_text_message(product) -> fmt:
@@ -16,12 +18,14 @@ def get_product_text_message(product) -> fmt:
         sep="\n"), url)
 
 
-def get_paginate_keyboard() -> types.ReplyKeyboardMarkup:
+def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
+    paginate_buttons = []
+    if paginator.has_previous():
+        paginate_buttons.append(types.KeyboardButton(text="prev"))
+    if paginator.has_next():
+        paginate_buttons.append(types.KeyboardButton(text="next"))
     keyboard = [
-        [
-            types.KeyboardButton(text="prev"),
-            types.KeyboardButton(text="next"),
-            types.KeyboardButton(text="exit")
-        ]
+        paginate_buttons,
+        [types.KeyboardButton(text="exit")]
     ]
     return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)

@@ -1,2 +1,1 @@
-from .scraper import GoogleShoppingScraper
-from .pagination import Paginator
+from .scraper import GoogleShoppingScraper as Scraper
