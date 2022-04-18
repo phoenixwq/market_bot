@@ -1,14 +1,16 @@
 from aiogram.dispatcher.router import Router
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
+from aiogram import types, F
 from bot.web_scraper import Scraper
-from .utils import *
 from bot.db.base import session
 from bot.db.tables import User, Product
-from .paginator import Paginator
-from .filters import PaginateFilter
+from bot.paginator import Paginator
+from bot.filters import PaginateFilter
 from .common import menu
-from aiogram import F
+from .utils import get_paginate_keyboard, send_page_to_user
+import re
+
 PAGE_SIZE = 3
 
 router = Router()
@@ -55,8 +57,7 @@ async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
         await state.clear()
-        await menu(message)
-        return
+        return await menu(message)
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")
@@ -66,8 +67,7 @@ async def page_view(message: types.Message, state: FSMContext):
         else:
             products = paginator.previous()
     except IndexError:
-        await message.answer("page not found!")
-        return
+        return await message.answer("page not found!")
 
     await state.update_data(paginator=paginator)
     await send_page_to_user(message.from_user.id, products, text='Add to favorites',
@@ -77,7 +77,6 @@ async def page_view(message: types.Message, state: FSMContext):
 
 @router.callback_query(lambda query: query.data == "add_product_to_favorites", )
 async def add_product_in_user_favorite(call: types.CallbackQuery):
-    import re
     name, price, shop = re.match(r"name: ([\w\W]*)\nprice: ([\w\W]*)\nshop: ([\w\W]*)", call.message.caption).groups()
     image = call.message.photo[0].file_id
     url = call.message.caption_entities[0].url

@@ -5,8 +5,8 @@ from aiogram import F, types
 from bot.db.base import session
 from bot.db.tables import User, Product
 from .utils import send_page_to_user, get_paginate_keyboard
-from .filters import PaginateFilter
-from .paginator import Paginator
+from bot.filters import PaginateFilter
+from bot.paginator import Paginator
 from .common import menu
 
 PAGE_SIZE = 3
@@ -40,8 +40,7 @@ async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
         await state.clear()
-        await menu(message)
-        return
+        return await menu(message)
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")
@@ -51,8 +50,7 @@ async def page_view(message: types.Message, state: FSMContext):
         else:
             products = paginator.previous()
     except IndexError:
-        await message.answer("page not found!")
-        return
+        return await message.answer("page not found!")
 
     await state.update_data(paginator=paginator)
     await send_page_to_user(message.from_user.id, products, text='Remove from favorites',
