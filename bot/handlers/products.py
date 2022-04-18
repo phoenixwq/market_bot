@@ -4,7 +4,8 @@ from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram import types, F
 from bot.web_scraper import Scraper
 from bot.db.base import session
-from bot.db.tables import User, Product
+from bot.db.utils import get_or_create
+from bot.db.models import User, Product
 from bot.paginator import Paginator
 from bot.filters import PaginateFilter
 from .common import menu
@@ -34,7 +35,7 @@ async def search_start(message: types.Message, state: FSMContext):
 async def load_data(message: types.Message, state: FSMContext):
     location = None
     with session() as s:
-        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        user = get_or_create(s, User, chat_id=message.from_user.id)
         if user.longitude is not None and user.latitude is not None:
             location = {
                 "longitude": user.longitude,
@@ -81,7 +82,8 @@ async def add_product_in_user_favorite(call: types.CallbackQuery):
     image = call.message.photo[0].file_id
     url = call.message.caption_entities[0].url
     with session() as s:
-        user = s.query(User).filter_by(chat_id=call.from_user.id).first()
-        product = Product(name=name, price=price, shop=shop, url=url, user=user.id, image=image)
+        user = get_or_create(s, User, chat_id=call.from_user.id)
+        product = get_or_create(s, Product, name=name, price=price, shop=shop, url=url, image=image)
+        user.products.append(product)
         s.add(product)
     await call.answer(text="Product added to favorites!", show_alert=True)

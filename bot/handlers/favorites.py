@@ -3,7 +3,8 @@ from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
 from aiogram import F, types
 from bot.db.base import session
-from bot.db.tables import User, Product
+from bot.db.models import User, Product
+from bot.db.utils import get_or_create
 from .utils import send_page_to_user, get_paginate_keyboard
 from bot.filters import PaginateFilter
 from bot.paginator import Paginator
@@ -20,10 +21,9 @@ class ViewFavorites(StatesGroup):
 @router.message(F.text.casefold() == "⭐")
 async def favorites_load_data(message: types.Message, state: FSMContext):
     with session() as s:
-        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
-        products = s.query(Product).filter_by(user=user.id).all()
+        user = get_or_create(s, User, chat_id=message.from_user.id)
         data = []
-        for product in products:
+        for product in user.products:
             product_data: dict = {column.name: getattr(product, column.name) for column in product.__table__.columns}
             data.append(product_data)
 
@@ -63,7 +63,8 @@ async def remove_product_from_favorites(call: types.CallbackQuery):
     await call.answer(text="Product remove from favorites!", show_alert=True)
     url = call.message.caption_entities[0].url
     with session() as s:
-        user = s.query(User).filter_by(chat_id=call.from_user.id).first()
-        product = s.query(Product).filter_by(url=url, user=user.id).one_or_none()
+        user = get_or_create(s, User, chat_id=call.from_user.id)
+        product = s.query(Product).filter_by(url=url).one_or_none()
         if product is not None:
+            user.products.remove(product)
             s.delete(product)

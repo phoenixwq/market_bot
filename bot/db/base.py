@@ -25,20 +25,5 @@ def session(**kwargs) -> typing.ContextManager[Session]:
         new_session.close()
 
 
-def get_or_create(model, **kwargs):
-    with session() as s:
-        instance = s.query(model).filter_by(**kwargs).one_or_none()
-        if instance is None:
-            instance = model(**kwargs)
-            try:
-                s.add(instance)
-                s.commit()
-            except Exception:
-                s.rollback()
-                raise
-
-    return instance
-
-
 def create_db():
     DeclarativeBase.metadata.create_all(engine)
