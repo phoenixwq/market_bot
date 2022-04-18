@@ -1,3 +1,4 @@
+from aiogram.dispatcher.filters import ContentTypesFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
@@ -35,12 +36,12 @@ async def favorites_load_data(message: types.Message, state: FSMContext):
         await state.set_state(ViewFavorites.load_data)
 
 
-@router.message(ViewFavorites.load_data, PaginateFilter())
+@router.message(ViewFavorites.load_data, ContentTypesFilter(content_types=["text"]), PaginateFilter())
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
         await state.clear()
-        return await menu(message)
+        return await menu(message, state)
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")

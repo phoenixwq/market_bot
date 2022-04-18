@@ -1,4 +1,6 @@
 from aiogram import types
+from aiogram.dispatcher.fsm.context import FSMContext
+
 from bot.db.models import User
 from bot.db.utils import get_or_create
 from bot.db.base import session
@@ -8,16 +10,18 @@ router = Router()
 
 
 @router.message(commands=["menu"])
-async def menu(message: types.Message):
+async def menu(message: types.Message, state: FSMContext):
+    await state.clear()
     keyboard = [
         [
             types.KeyboardButton(text="🔎"),
             types.KeyboardButton(text="⭐"),
+            types.KeyboardButton(text="📍"),
         ]
     ]
 
     markup = types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
-    await message.answer("🔎 - search product\n⭐ - favorites", reply_markup=markup)
+    await message.answer("🔎 - search product\n⭐ - favorites\n📍 - change location", reply_markup=markup)
 
 
 @router.message(commands=["start"])
