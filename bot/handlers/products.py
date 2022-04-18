@@ -6,7 +6,9 @@ from .utils import *
 from bot.db.base import session
 from bot.db.tables import User, Product
 from .paginator import Paginator
-
+from .filters import PaginateFilter
+from .common import menu
+from aiogram import F
 PAGE_SIZE = 3
 
 router = Router()
@@ -17,7 +19,7 @@ class SearchProduct(StatesGroup):
     load_data = State()
 
 
-@router.message(commands=["search"])
+@router.message(F.text.casefold() == "🔎")
 async def search_start(message: types.Message, state: FSMContext):
     await state.set_state(SearchProduct.product_name)
     await message.answer(
@@ -28,7 +30,15 @@ async def search_start(message: types.Message, state: FSMContext):
 
 @router.message(SearchProduct.product_name)
 async def load_data(message: types.Message, state: FSMContext):
-    data = Scraper().parse(message.text.lower())
+    location = None
+    with session() as s:
+        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        if user.longitude is not None and user.latitude is not None:
+            location = {
+                "longitude": user.longitude,
+                "latitude": user.latitude
+            }
+    data = Scraper(location).parse(message.text.lower())
     paginator = Paginator(data, PAGE_SIZE)
     await message.answer(
         f"{message.from_user.first_name.capitalize()}, here's what I found!",
@@ -40,15 +50,12 @@ async def load_data(message: types.Message, state: FSMContext):
     await state.set_state(SearchProduct.load_data)
 
 
-@router.message(SearchProduct.load_data)
+@router.message(SearchProduct.load_data, PaginateFilter())
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
-    if user_message not in ('next', 'prev', 'exit'):
-        await message.answer("Please use the keyboard bellow")
-        return
     if user_message == "exit":
-        await message.answer("searched completed!", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
+        await menu(message)
         return
 
     data = await state.get_data()

@@ -1,14 +1,15 @@
-from aiogram import types
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from .paginator import Paginator
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
+from aiogram import F, types
 from bot.db.base import session
 from bot.db.tables import User, Product
 from .utils import send_page_to_user, get_paginate_keyboard
+from .filters import PaginateFilter
+from .paginator import Paginator
+from .common import menu
 
 PAGE_SIZE = 3
-
 router = Router()
 
 
@@ -16,7 +17,7 @@ class ViewFavorites(StatesGroup):
     load_data = State()
 
 
-@router.message(commands=["favorites"])
+@router.message(F.text.casefold() == "⭐")
 async def favorites_load_data(message: types.Message, state: FSMContext):
     with session() as s:
         user = s.query(User).filter_by(chat_id=message.from_user.id).first()
@@ -34,15 +35,12 @@ async def favorites_load_data(message: types.Message, state: FSMContext):
         await state.set_state(ViewFavorites.load_data)
 
 
-@router.message(ViewFavorites.load_data)
+@router.message(ViewFavorites.load_data, PaginateFilter())
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
-    if user_message not in ('next', 'prev', 'exit'):
-        await message.answer("Please use the keyboard bellow")
-        return
     if user_message == "exit":
-        await message.answer("searched completed!", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
+        await menu(message)
         return
 
     data = await state.get_data()

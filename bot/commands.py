@@ -6,8 +6,7 @@ async def set_commands(bot: Bot):
     commands = [
         (
             [
-                BotCommand(command="search", description="search products by name"),
-                BotCommand(command="favorites", description="favorites")
+                BotCommand(command="menu", description="list actions")
             ]
         )
     ]
