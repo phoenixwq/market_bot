@@ -25,9 +25,9 @@ async def menu(message: types.Message, state: FSMContext):
 
 
 @router.message(commands=["start"])
-async def start(message: types.Message):
+async def start(message: types.Message, state: FSMContext):
     user = message.from_user
     with session() as s:
         get_or_create(s, User, chat_id=user.id)
     await message.answer(f"Hi, {user.first_name.capitalize()}, i'm a bot that finds goods in your muhosransk")
-    await menu(message)
+    await menu(message, state)
