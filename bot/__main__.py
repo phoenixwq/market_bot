@@ -11,6 +11,7 @@ from bot.db import create_db
 async def main():
     bot = Bot(token=getenv("TOKEN"), parse_mode="HTML")
     dp = Dispatcher()
+
     dp.include_router(common.router)
     dp.include_router(favorites.router)
     dp.include_router(products.router)

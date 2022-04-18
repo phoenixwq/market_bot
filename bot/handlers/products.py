@@ -1,11 +1,15 @@
 from aiogram.dispatcher.router import Router
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
+from aiogram import types, F
 from bot.web_scraper import Scraper
-from .utils import *
 from bot.db.base import session
 from bot.db.tables import User, Product
-from .paginator import Paginator
+from bot.paginator import Paginator
+from bot.filters import PaginateFilter
+from .common import menu
+from .utils import get_paginate_keyboard, send_page_to_user
+import re
 
 PAGE_SIZE = 3
 
@@ -17,7 +21,7 @@ class SearchProduct(StatesGroup):
     load_data = State()
 
 
-@router.message(commands=["search"])
+@router.message(F.text.casefold() == "🔎")
 async def search_start(message: types.Message, state: FSMContext):
     await state.set_state(SearchProduct.product_name)
     await message.answer(
@@ -28,7 +32,15 @@ async def search_start(message: types.Message, state: FSMContext):
 
 @router.message(SearchProduct.product_name)
 async def load_data(message: types.Message, state: FSMContext):
-    data = Scraper().parse(message.text.lower())
+    location = None
+    with session() as s:
+        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        if user.longitude is not None and user.latitude is not None:
+            location = {
+                "longitude": user.longitude,
+                "latitude": user.latitude
+            }
+    data = Scraper(location).parse(message.text.lower())
     paginator = Paginator(data, PAGE_SIZE)
     await message.answer(
         f"{message.from_user.first_name.capitalize()}, here's what I found!",
@@ -40,16 +52,12 @@ async def load_data(message: types.Message, state: FSMContext):
     await state.set_state(SearchProduct.load_data)
 
 
-@router.message(SearchProduct.load_data)
+@router.message(SearchProduct.load_data, PaginateFilter())
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
-    if user_message not in ('next', 'prev', 'exit'):
-        await message.answer("Please use the keyboard bellow")
-        return
     if user_message == "exit":
-        await message.answer("searched completed!", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
-        return
+        return await menu(message)
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")
@@ -59,8 +67,7 @@ async def page_view(message: types.Message, state: FSMContext):
         else:
             products = paginator.previous()
     except IndexError:
-        await message.answer("page not found!")
-        return
+        return await message.answer("page not found!")
 
     await state.update_data(paginator=paginator)
     await send_page_to_user(message.from_user.id, products, text='Add to favorites',
@@ -70,7 +77,6 @@ async def page_view(message: types.Message, state: FSMContext):
 
 @router.callback_query(lambda query: query.data == "add_product_to_favorites", )
 async def add_product_in_user_favorite(call: types.CallbackQuery):
-    import re
     name, price, shop = re.match(r"name: ([\w\W]*)\nprice: ([\w\W]*)\nshop: ([\w\W]*)", call.message.caption).groups()
     image = call.message.photo[0].file_id
     url = call.message.caption_entities[0].url
