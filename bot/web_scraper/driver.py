@@ -1,11 +1,11 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from pathlib import Path
+from .config import BASE_DIR
 import os
 
 
 class WebDriver:
-    driver_path = os.path.join(Path(__file__).resolve().parent, "chromedriver")
+    driver_path = os.path.join(BASE_DIR, "chromedriver")
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, 'instance'):

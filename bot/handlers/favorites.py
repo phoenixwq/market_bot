@@ -8,7 +8,7 @@ from bot.db.models import User, Product
 from bot.db.utils import get_or_create
 from .utils import send_page_to_user, get_paginate_keyboard
 from bot.filters import PaginateFilter
-from bot.paginator import Paginator
+from bot.web_scraper.pagination import Paginator
 from .common import menu
 
 PAGE_SIZE = 3

@@ -7,7 +7,7 @@ from bot.web_scraper import Scraper
 from bot.db.base import session
 from bot.db.utils import get_or_create
 from bot.db.models import User, Product
-from bot.paginator import Paginator
+from bot.web_scraper.pagination import Paginator
 from bot.filters import PaginateFilter
 from .common import menu
 from .utils import get_paginate_keyboard, send_page_to_user
