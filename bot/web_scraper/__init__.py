@@ -1,1 +1,1 @@
-from .scraper import GoogleShoppingScraper as Scraper
+from .scraper import GISScraper as Scraper

@@ -1,47 +1,75 @@
 from bs4 import BeautifulSoup
-from datetime import datetime
-from .config import BASE_DIR, CSV_DELIMITER
 from .driver import WebDriver
-import os
-import csv
+from geopy.geocoders import Nominatim
+from geopy import distance
+from typing import List
 
 
-class ScraperData:
-    def __init__(self, file: str, size: int):
-        self.file = file
-        self.size = size
+class GISScraper:
+    base_url = "https://2gis.ru"
 
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(GISScraper, cls).__new__(cls, *args, **kwargs)
+        return cls.instance
 
-class GoogleShoppingScraper:
-    url = "https://www.google.ru/search?tbm=shop&hl=ru&q=%s"
+    def __init__(self):
+        self._driver = WebDriver()
+        self.geolocator = Nominatim(user_agent="test_app")
+        self.location = None
 
-    def __init__(self, location=None):
-        self._web_driver = WebDriver()
-        self.location = location
+    def set_location(self, latitude: float, longitude: float, rotation: str = "2F17.65") -> None:
+        self.location = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "rotation": rotation
+        }
 
-    def parse(self, product_name: str) -> ScraperData:
-        if self.location is not None:
-            self._web_driver.set_location(**self.location)
+    def parse(self, product_name: str) -> List[dict]:
+        if self.location is None:
+            raise ValueError("Doesn't not exists location")
 
-        html = self._web_driver.get_page_content(self.url % product_name)
-        soup = BeautifulSoup(html, 'html.parser')
-        soup.find_all("div", {"class": "i0X6df"})
+        driver = self._driver
+        products_url = self.base_url + "/search/{product_name}/tab/market?m={longitude}%2C{latitude}%{rotation}".format(
+            product_name=product_name,
+            **self.location
+        )
+        html = driver.get_page_content(products_url)
 
-        filename = str(datetime.now().timestamp()) + ".csv"
-        path_file = os.path.join(BASE_DIR, f"data/{filename}")
-        size = 0
-        with open(path_file, "w", encoding='UTF8', newline='') as csv_file:
-            writer = csv.writer(csv_file, delimiter=CSV_DELIMITER)
-            header = ["name", "price", "shop", "url", "image"]
-            writer.writerow(header)
+        soup = BeautifulSoup(html, "html.parser")
+        products = []
+        user_coordinates = (self.location.get("latitude"), self.location.get("longitude"))
+        for product in soup.find_all("div", {"class": "_1k2x33mp"}):
+            url = product.find("a", class_="_1rehek").get('href')
+            name = product.find("span", class_="_hc69qa").text
 
-            for product in soup.find_all("div", {"class": "i0X6df"}):
-                size += 1
-                name = product.find('h4', class_='Xjkr3b').text
-                price = product.find('span', class_='a8Pemb OFFNJ').text
-                shop = product.find('div', class_='aULzUe IuHnof').text
-                url = product.find('div', class_='zLPF4b').find('div').find('a').get('href')[9:]
-                image = product.find('div', class_="ArOc1c").find('img')['src']
-                writer.writerow([name, price, shop, url, image])
-
-            return ScraperData(file=path_file, size=size)
+            html = driver.get_page_content(
+                "{base_url}{url}?m={longitude}%2C{latitude}%{rotation}".format(base_url=self.base_url,
+                                                                               url=url,
+                                                                               **self.location))
+            product_detail = BeautifulSoup(html, "html.parser")
+            try:
+                image_url = product_detail.find("div", class_="_1l59x1q").find('img')['src']
+            except AttributeError:
+                image_url = None
+            product_locations = []
+            for elem in product_detail.find_all("div", {"class": "_1xqczd6"}):
+                shop = elem.find("div", class_="_b8wvvmq").text
+                address = elem.find("div", class_="_9vba8w").text
+                price = elem.find("span", class_="_f9pg1j5").text
+                location = self.geolocator.geocode(address)
+                if location is None:
+                    continue
+                address_coords = (location.latitude, location.longitude)
+                distance_ = distance.distance(user_coordinates, address_coords).km
+                product_locations.append([shop, address, price, distance_])
+            product_locations.sort(key=lambda x: x[-1])
+            products.append(
+                {
+                    "name": name,
+                    "image": image_url,
+                    "locations": product_locations[:3]
+                }
+            )
+        products.sort(key=lambda d: d["locations"][0][-1])
+        return products

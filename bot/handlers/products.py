@@ -42,7 +42,9 @@ async def load_data(message: types.Message, state: FSMContext):
                 "longitude": user.longitude,
                 "latitude": user.latitude
             }
-    data = Scraper(location).parse(message.text.lower())
+    scraper = Scraper()
+    scraper.set_location(**location)
+    data = scraper.parse(message.text.lower())
     paginator = Paginator(data, PAGE_SIZE)
     await message.answer(
         f"{message.from_user.first_name.capitalize()}, here's what I found!",

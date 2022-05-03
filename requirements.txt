@@ -1,4 +1,4 @@
-aiogram==2.19
+aiogram~=3.0.0b2
 aiohttp==3.8.1
 aiosignal==1.2.0
 async-generator==1.10
@@ -30,3 +30,4 @@ urllib3==1.26.9
 wsproto==1.1.0
 yarl==1.7.2
 SQLAlchemy~=1.4.35
+geopy~=2.2.0

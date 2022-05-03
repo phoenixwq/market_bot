@@ -1,19 +1,17 @@
 from aiogram import types
-import aiogram.utils.markdown as fmt
 from aiogram.utils.keyboard import *
 from aiogram.methods import SendPhoto
 
 
-def get_product_text_message(product) -> fmt:
+def get_product_text_message(product) -> str:
     name = product.get("name")
-    price = product.get("price")
-    shop = product.get("shop")
-    url = product.get("url")
-    return fmt.hlink(fmt.text(
-        fmt.text(f"name: {name}"),
-        fmt.text(f"price: {price}"),
-        fmt.text(f"shop: {shop}"),
-        sep="\n"), url)
+    locations = product.get("locations")
+    str_list = []
+    for data in locations:
+        s = "\nshop: {0} \naddress: {1} \nprice: {2} \ndistance: {3} km\n".format(*data)
+        str_list.append(s)
+    description = "----------------->".join(str_list)
+    return f"{name}\n{description}"
 
 
 def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
@@ -38,7 +36,9 @@ async def send_page_to_user(chat_id: int, page: List[dict], **button_kwargs):
         )
         text: str = get_product_text_message(product)
         photo = product.get('image')
-        if photo.startswith("http"):
+        if photo is None:
+            photo = types.URLInputFile("https://fisnikde.com/wp-content/uploads/2019/01/broken-image.png", filename=product.get('name'))
+        elif photo.startswith("http"):
             photo = types.URLInputFile(photo, filename=product.get('name'))
 
         await SendPhoto(chat_id=chat_id, photo=photo, caption=text,
