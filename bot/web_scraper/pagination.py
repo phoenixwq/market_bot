@@ -7,7 +7,8 @@ class Paginator:
         self.data = data
         self.page_size = page_size
         self.current_page = 0
-        self.count_page = math.ceil(len(self.data) / self.page_size)
+        self.size = len(self.data)
+        self.count_page = math.ceil(self.size / self.page_size)
 
     def next(self) -> List[dict]:
         if self.current_page + 1 > self.count_page:
@@ -36,4 +37,4 @@ class Paginator:
         return self.current_page + 1 < self.count_page
 
     def has_previous(self) -> bool:
-        return self.current_page > 1
+        return self.current_page >= 1

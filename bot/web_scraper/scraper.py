@@ -2,7 +2,9 @@ from bs4 import BeautifulSoup
 from .driver import WebDriver
 from geopy.geocoders import Nominatim
 from geopy import distance
+from geopy.exc import GeocoderTimedOut
 from typing import List
+from methodtools import lru_cache
 
 
 class GISScraper:
@@ -25,6 +27,7 @@ class GISScraper:
             "rotation": rotation
         }
 
+    @lru_cache(maxsize=16)
     def parse(self, product_name: str) -> List[dict]:
         if self.location is None:
             raise ValueError("Doesn't not exists location")
@@ -57,13 +60,20 @@ class GISScraper:
                 shop = elem.find("div", class_="_b8wvvmq").text
                 address = elem.find("div", class_="_9vba8w").text
                 price = elem.find("span", class_="_f9pg1j5").text
-                location = self.geolocator.geocode(address)
-                if location is None:
+                try:
+                    location = self.geolocator.geocode(address)
+                    if location is None:
+                        if "," in address:
+                            address = " ".join(address.split(",")[::-1])
+                            location = self.geolocator.geocode(address)
+                    address_coords = (location.latitude, location.longitude)
+                except (GeocoderTimedOut, AttributeError):
                     continue
-                address_coords = (location.latitude, location.longitude)
-                distance_ = distance.distance(user_coordinates, address_coords).km
+                distance_ = round(distance.distance(user_coordinates, address_coords).km, 3)
                 product_locations.append([shop, address, price, distance_])
             product_locations.sort(key=lambda x: x[-1])
+            if len(product_locations) < 1:
+                continue
             products.append(
                 {
                     "name": name,

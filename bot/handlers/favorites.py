@@ -9,7 +9,6 @@ from bot.db.utils import get_or_create
 from .utils import send_page_to_user, get_paginate_keyboard
 from bot.filters import PaginateFilter
 from bot.web_scraper.pagination import Paginator
-from .common import menu
 
 PAGE_SIZE = 3
 router = Router()
@@ -19,7 +18,7 @@ class ViewFavorites(StatesGroup):
     load_data = State()
 
 
-@router.message(F.text.casefold() == "⭐")
+@router.message(commands=["favorites"])
 async def favorites_load_data(message: types.Message, state: FSMContext):
     with session() as s:
         user = get_or_create(s, User, chat_id=message.from_user.id)
@@ -41,7 +40,8 @@ async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
         await state.clear()
-        return await menu(message, state)
+        await message.answer("Search completed!", reply_markup=Remo)
+        return
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")

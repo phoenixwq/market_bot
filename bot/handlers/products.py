@@ -2,14 +2,13 @@ from aiogram.dispatcher.filters import ContentTypesFilter
 from aiogram.dispatcher.router import Router
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
-from aiogram import types, F
+from aiogram import types
 from bot.web_scraper import Scraper
 from bot.db.base import session
 from bot.db.utils import get_or_create
 from bot.db.models import User, Product
 from bot.web_scraper.pagination import Paginator
 from bot.filters import PaginateFilter
-from .common import menu
 from .utils import get_paginate_keyboard, send_page_to_user
 import re
 
@@ -23,29 +22,38 @@ class SearchProduct(StatesGroup):
     load_data = State()
 
 
-@router.message(F.text.casefold() == "🔎")
+@router.message(commands=["search"])
 async def search_start(message: types.Message, state: FSMContext):
     await state.set_state(SearchProduct.product_name)
     await message.answer(
-        "Enter the name of the product you want to find!",
+        "Enter the name of the product you want to find:",
         reply_markup=types.ReplyKeyboardRemove()
     )
 
 
 @router.message(SearchProduct.product_name, ContentTypesFilter(content_types=["text"]))
 async def load_data(message: types.Message, state: FSMContext):
-    location = None
     with session() as s:
         user = get_or_create(s, User, chat_id=message.from_user.id)
-        if user.longitude is not None and user.latitude is not None:
-            location = {
-                "longitude": user.longitude,
-                "latitude": user.latitude
-            }
+        if user.latitude is None or user.longitude is None:
+            await message.answer(
+                "Product search is not possible without your geolocation, please use the command /location"
+            )
+            await state.clear()
+            return
+        user_location = {
+            "longitude": user.longitude,
+            "latitude": user.latitude
+        }
+
     scraper = Scraper()
-    scraper.set_location(**location)
+    scraper.set_location(**user_location)
+    await message.answer("Loading...")
     data = scraper.parse(message.text.lower())
     paginator = Paginator(data, PAGE_SIZE)
+    if paginator.size == 0:
+        await message.answer("Unfortunately I couldn't find anything, please try again")
+        return
     await message.answer(
         f"{message.from_user.first_name.capitalize()}, here's what I found!",
         reply_markup=get_paginate_keyboard(paginator)
@@ -60,8 +68,9 @@ async def load_data(message: types.Message, state: FSMContext):
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
+        await message.answer(text="Exit", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
-        return await menu(message, state)
+        return
 
     data = await state.get_data()
     paginator: Paginator = data.get("paginator")
