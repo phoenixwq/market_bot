@@ -1,5 +1,4 @@
 from aiogram import types
-from aiogram.utils.keyboard import *
 from aiogram.methods import SendPhoto
 
 
@@ -16,13 +15,8 @@ def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-async def send_page_to_user(chat_id: int, page, **button_kwargs):
+async def send_page_to_user(chat_id: int, page):
     for content in page:
-        keyboard = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(**button_kwargs)]
-            ]
-        )
         photo = content.image
         if photo is None:
             photo = types.URLInputFile("https://fisnikde.com/wp-content/uploads/2019/01/broken-image.png",
@@ -31,4 +25,4 @@ async def send_page_to_user(chat_id: int, page, **button_kwargs):
             photo = types.URLInputFile(photo, filename=content.name)
 
         await SendPhoto(chat_id=chat_id, photo=photo, caption=str(content),
-                        disable_notification=True, parse_mode="HTML", reply_markup=keyboard)
+                        disable_notification=True, parse_mode="HTML")
