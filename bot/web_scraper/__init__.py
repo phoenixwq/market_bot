@@ -1,3 +1,2 @@
-from .scraper import GisMarketScraper as Scraper
-from .scraper import GisMarketPage as Page
+from .scraper import Scraper, Page
 from .pagination import Paginator
