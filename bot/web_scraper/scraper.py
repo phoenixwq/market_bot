@@ -10,11 +10,11 @@ CSV_DELIMITER = "#"
 
 
 class Page:
-    def __init__(self, query_param: dict):
+    def __init__(self, **kwargs):
         self._driver = WebDriver()
         self._url_pattern = "https://2gis.ru/search/{product_name}" \
                             "/tab/market/page/{page}?m={longitude}%2C{latitude}%2F17.65"
-        self.query_param = query_param
+        self.query_param = kwargs
 
     def __iter__(self):
         if "page" in self.query_param:
