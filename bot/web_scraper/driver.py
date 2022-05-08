@@ -20,7 +20,7 @@ class WebDriver:
     def _create_driver(self) -> webdriver:
         chrome_options = Options()
         chrome_options.add_experimental_option('prefs', {
-            'geolocation': True,
+            'geolocation': False,
         })
         return webdriver.Chrome(self.driver_path, options=chrome_options)
 

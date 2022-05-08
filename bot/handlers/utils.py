@@ -3,17 +3,6 @@ from aiogram.utils.keyboard import *
 from aiogram.methods import SendPhoto
 
 
-def get_product_text_message(product) -> str:
-    name = product.get("name")
-    locations = product.get("locations")
-    str_list = []
-    for data in locations:
-        s = "\nshop: {0} \naddress: {1} \nprice: {2} \ndistance: {3} km\n".format(*data)
-        str_list.append(s)
-    description = "----------------->".join(str_list)
-    return f"{name}\n{description}"
-
-
 def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
     paginate_buttons = []
     if paginator.has_previous():
@@ -27,19 +16,19 @@ def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
     return types.ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 
-async def send_page_to_user(chat_id: int, page: List[dict], **button_kwargs):
-    for product in page:
+async def send_page_to_user(chat_id: int, page, **button_kwargs):
+    for content in page:
         keyboard = types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [types.InlineKeyboardButton(**button_kwargs)]
             ]
         )
-        text: str = get_product_text_message(product)
-        photo = product.get('image')
+        photo = content.image
         if photo is None:
-            photo = types.URLInputFile("https://fisnikde.com/wp-content/uploads/2019/01/broken-image.png", filename=product.get('name'))
+            photo = types.URLInputFile("https://fisnikde.com/wp-content/uploads/2019/01/broken-image.png",
+                                       filename=content.name)
         elif photo.startswith("http"):
-            photo = types.URLInputFile(photo, filename=product.get('name'))
+            photo = types.URLInputFile(photo, filename=content.name)
 
-        await SendPhoto(chat_id=chat_id, photo=photo, caption=text,
+        await SendPhoto(chat_id=chat_id, photo=photo, caption=str(content),
                         disable_notification=True, parse_mode="HTML", reply_markup=keyboard)

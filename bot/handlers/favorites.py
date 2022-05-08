@@ -2,13 +2,13 @@ from aiogram.dispatcher.filters import ContentTypesFilter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
-from aiogram import F, types
+from aiogram import types
 from bot.db.base import session
 from bot.db.models import User, Product
 from bot.db.utils import get_or_create
-from .utils import send_page_to_user, get_paginate_keyboard
+from bot.handlers.utils import send_page_to_user, get_paginate_keyboard
 from bot.filters import PaginateFilter
-from bot.web_scraper.pagination import Paginator
+from bot.web_scraper import Paginator
 
 PAGE_SIZE = 3
 router = Router()
@@ -40,7 +40,7 @@ async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
     if user_message == "exit":
         await state.clear()
-        await message.answer("Search completed!", reply_markup=Remo)
+        await message.answer("Search completed!", reply_markup=types.ReplyKeyboardRemove())
         return
 
     data = await state.get_data()

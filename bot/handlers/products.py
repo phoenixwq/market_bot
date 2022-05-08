@@ -3,13 +3,12 @@ from aiogram.dispatcher.router import Router
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram import types
-from bot.web_scraper import Scraper
 from bot.db.base import session
 from bot.db.utils import get_or_create
 from bot.db.models import User, Product
-from bot.web_scraper.pagination import Paginator
+from bot.web_scraper import Paginator, Scraper, Page
 from bot.filters import PaginateFilter
-from .utils import get_paginate_keyboard, send_page_to_user
+from bot.handlers.utils import get_paginate_keyboard, send_page_to_user
 import re
 
 PAGE_SIZE = 3
@@ -45,11 +44,10 @@ async def load_data(message: types.Message, state: FSMContext):
             "longitude": user.longitude,
             "latitude": user.latitude
         }
-
+    page = Page(**user_location, product_name=message.text.lower())
     scraper = Scraper()
-    scraper.set_location(**user_location)
     await message.answer("Loading...")
-    data = scraper.parse(message.text.lower())
+    data = scraper.parse(page)
     paginator = Paginator(data, PAGE_SIZE)
     if paginator.size == 0:
         await message.answer("Unfortunately I couldn't find anything, please try again")

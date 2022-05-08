@@ -1,9 +1,10 @@
 from typing import List
 import math
+from .scraper import BaseContent
 
 
 class Paginator:
-    def __init__(self, data: List[dict], page_size: int):
+    def __init__(self, data: List[BaseContent], page_size: int):
         self.data = data
         self.page_size = page_size
         self.current_page = 0
