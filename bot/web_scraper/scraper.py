@@ -4,7 +4,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from typing import List
 from .driver import WebDriver
-
+import json
 BASE_DIR = Path(__file__).resolve().parent
 CSV_DELIMITER = "#"
 
@@ -23,11 +23,11 @@ class Page:
         self._number = 0
         self._start_page = self.get_page(1)
         soup = BeautifulSoup(self._start_page, "html.parser")
-        self.count_page = len(soup.find_all("span", {"class": "_19xy60y"}))
+        self.count_page = len(soup.find_all("span", {"class": "_19xy60y"})) or 1
         return self
 
     def __next__(self):
-        if self._number > self.count_page:
+        if self._number >= self.count_page:
             raise StopIteration
         self._number += 1
         if self._number == 1:
@@ -51,13 +51,13 @@ class Scraper:
         path_file = os.path.join(BASE_DIR, f"data/{filename}")
         with open(path_file, "w", encoding='UTF8', newline='') as csv_file:
             writer = csv.writer(csv_file, delimiter=CSV_DELIMITER)
-            header = ["id", "name", "price", "shop", "address", "image"]
+            header = ["id", "name", "image", "local_info"]
             writer.writerow(header)
             for html in page:
                 products_soup = BeautifulSoup(html, "html.parser")
                 for product in products_soup.find_all("div", {"class": "_1k2x33mp"}):
                     product_url = product.find("a", class_="_1rehek").get('href')
-                    product_id = re.match(r"\d*", product_url).group(0)
+                    product_id = re.search(r"\d+", product_url).group(0)
                     product_name = product.find("span", class_="_hc69qa").text
                     product_detail_hrml = self._driver.get_page_content(self.base_url + product_url)
                     product_detail_soup = BeautifulSoup(product_detail_hrml, "html.parser")
@@ -71,7 +71,8 @@ class Scraper:
                         address = local_info.find("div", class_="_9vba8w").text
                         price = local_info.find("span", class_="_f9pg1j5").text
                         locations_info.append([shop, address, price])
-                        writer.writerow([product_id, product_name, price, shop, address, image_url])
+                    to_json = json.dumps(locations_info)
+                    writer.writerow([product_id, product_name, image_url, to_json])
             self.csv_file = path_file
 
     def get_data(self) -> List[dict]:
@@ -80,7 +81,6 @@ class Scraper:
             raise ValueError("Dont parse data")
         with open(self.csv_file, newline='') as file:
             reader = csv.DictReader(file, delimiter=CSV_DELIMITER)
-            next(reader)
             for row in reader:
                 data.append(row)
         return data
