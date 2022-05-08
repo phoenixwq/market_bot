@@ -4,8 +4,7 @@ from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
 from bot.db.base import session
 from bot.db.models import User
-from aiogram import F, types
-from .common import menu
+from aiogram import types
 
 router = Router()
 
@@ -14,7 +13,7 @@ class Location(StatesGroup):
     waiting_location = State()
 
 
-@router.message(F.text.casefold() == "📍")
+@router.message(commands=["location"])
 async def set_users_location(message: types.Message, state: FSMContext):
     await message.answer("Please send your geo-location")
     await state.set_state(Location.waiting_location)
@@ -30,4 +29,3 @@ async def set_users_location(message: types.Message, state: FSMContext):
 
     await message.answer("Successful!")
     await state.clear()
-    await menu(message, state)

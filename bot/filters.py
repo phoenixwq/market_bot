@@ -8,6 +8,5 @@ class PaginateFilter(BaseFilter):
     async def __call__(self, message: types.Message) -> bool:
         if message.text in self.commands:
             return True
-
         await message.answer("Please use the keyboard bellow")
         return False
