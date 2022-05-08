@@ -4,11 +4,19 @@ from .base import DeclarativeBase
 from geoalchemy2 import Geometry
 
 
+class UsersRequest(DeclarativeBase):
+    __tablename__ = "user_request"
+    id = Column(Integer, primary_key=True)
+    query = Column(String, unique=True)
+    users = relationship("User")
+
+
 class User(DeclarativeBase):
     __tablename__ = "user"
     id = Column(Integer, primary_key=True)
     chat_id = Column(Integer, unique=True)
-    point = Column(Geometry('POINT'))
+    point = Column(Geometry('POINT'), nullable=True)
+    requests = Column(Integer, ForeignKey('user_request.id'), nullable=True)
 
     def __repr__(self):
         return f"chat_id: {self.chat_id}"
