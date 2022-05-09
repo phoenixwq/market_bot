@@ -3,8 +3,10 @@ from aiogram.dispatcher.filters.content_types import ContentTypesFilter
 from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.router import Router
 from bot.db.base import session
-from bot.db.models import User
+from bot.db.models import User, City
 from aiogram import types
+from bot.db.utils import get_or_create
+from bot.geocoder import get_city_by_coords
 
 router = Router()
 
@@ -23,7 +25,15 @@ async def set_users_location(message: types.Message, state: FSMContext):
 async def set_users_location(message: types.Message, state: FSMContext):
     with session() as s:
         user = s.query(User).filter_by(chat_id=message.from_user.id).first()
-        user.point = f"POINT({message.location.latitude} {message.location.longitude})"
+        lat = message.location.latitude
+        lon = message.location.longitude
+        city_name = get_city_by_coords(lat, lon)
+        if city_name is None:
+            await message.answer("Unable to determine your geolocation")
+            return
+        city = get_or_create(s, City, name=city_name)
+        user.point = f"POINT({lat} {lon})"
+        user.city = city
         s.add(user)
 
     await message.answer("Successful!")

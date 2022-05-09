@@ -17,8 +17,11 @@ def search_by_query(q: str):
     }
 
 
-def get_city_by_coords(lat: float, lon: float) -> str:
-    url = base_url + f"reverse?lat={lat}&lon={lon}&zoom=10&format=geojson"
+def get_city_by_coords(lat: float, lon: float):
+    url = base_url + f"reverse?lat={lat}&lon={lon}&format=geojson"
     response = requests.get(url=url)
-    city = response.json().get("features")[0].get("properties").get("address").get("city")
+    try:
+        city = response.json().get("features")[0].get("properties").get("address").get("city")
+    except AttributeError:
+        return None
     return city
