@@ -39,7 +39,9 @@ def data_to_message(data: List[dict]) -> str:
     local_info = data.get("local_info")
     str_list = []
     index = 0
-    for data in json.loads(local_info):
+    if isinstance(local_info, str):
+        local_info = json.loads(local_info)
+    for data in local_info:
         index += 1
         s = "\nshop: {0} \naddress: {1} \nprice: {2} \n".format(*data)
         str_list.append(s)
@@ -51,12 +53,11 @@ def data_to_message(data: List[dict]) -> str:
 
 def data_loader(message: types.Message, data):
     with session() as s:
-        request = get_or_create(s, UsersRequest, query=message.text.lower())
-        request.date = datetime.datetime.utcnow()
+        request = get_or_create(s, Request, query=message.text.lower())
         user = s.query(User).filter_by(chat_id=message.from_user.id).first()
         city = user.city
-        request.users.append(user)
-        s.add_all([request, user])
+        request_city = get_or_create(s, RequestCity, request=request, city=city)
+        s.add_all([request, user, request_city])
         for row in data:
             product_id = int(row["id"])
             product_name = row["name"]
@@ -86,3 +87,34 @@ def data_loader(message: types.Message, data):
                 shop_product.product = product
                 shop_product.city = city
                 s.add(shop_product)
+
+
+def search(message: types.Message):
+    with session() as s:
+        query = message.text.lower()
+        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        request_count = s.query(Request, RequestCity, City)\
+            .filter(Request.id == RequestCity.request_id, RequestCity.city_id == City.id)\
+            .filter(Request.query.ilike(f"%{query}%"), City.id == user.city.id).count()
+        if request_count != 0:
+            products_query = s.query(Product, ShopProduct, Shop, City) \
+                .filter(Product.id == ShopProduct.product_id,
+                        ShopProduct.shop_id == Shop.id,
+                        ShopProduct.city_id == City.id) \
+                .filter(Product.name.ilike(f"%{query}%")) \
+                .filter(ShopProduct.city_id == user.city.id)
+            data = []
+            for product, _, _, _ in products_query.distinct(Product.id).all():
+                product_data = {
+                    "name": product.name,
+                    "image": product.image
+                }
+                l = []
+                for _, shop_product, shop, city in products_query.filter(Product.id == product.id):
+                    l.append(
+                        [shop.name, shop_product.address, shop_product.price]
+                    )
+                product_data["local_info"] = l
+                data.append(product_data)
+            return data
+        return None

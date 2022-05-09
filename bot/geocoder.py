@@ -21,6 +21,6 @@ def get_city_by_coords(lat: float, lon: float):
     response = requests.get(url=url)
     try:
         city = response.json().get("features")[0].get("properties").get("address").get("city")
-    except AttributeError:
+    except (AttributeError, KeyError):
         return None
     return city

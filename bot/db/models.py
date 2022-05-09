@@ -11,14 +11,24 @@ class City(DeclarativeBase):
     name = Column(String, unique=True)
     users = relationship("User", back_populates="city")
     products = relationship("ShopProduct", back_populates="city")
+    requests = relationship("RequestCity", back_populates="city")
 
 
-class UsersRequest(DeclarativeBase):
-    __tablename__ = "user_request"
+class RequestCity(DeclarativeBase):
+    __tablename__ = "request_city"
+    id = Column(Integer, primary_key=True)
+    city_id = Column(ForeignKey('city.id'))
+    request_id = Column(ForeignKey('request.id'))
+    city = relationship("City", back_populates="requests")
+    request = relationship("Request", back_populates="cities")
+    date = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class Request(DeclarativeBase):
+    __tablename__ = "request"
     id = Column(Integer, primary_key=True)
     query = Column(String, unique=True)
-    users = relationship("User")
-    date = Column(DateTime, default=datetime.datetime.utcnow)
+    cities = relationship("RequestCity", back_populates="request")
 
 
 class User(DeclarativeBase):
@@ -27,8 +37,6 @@ class User(DeclarativeBase):
     chat_id = Column(Integer, unique=True)
     point = Column(Geometry('POINT'), nullable=True)
     city_id = Column(Integer, ForeignKey('city.id'))
-    requests_id = Column(Integer, ForeignKey('user_request.id'), nullable=True)
-    request = relationship("UsersRequest", back_populates="users")
     city = relationship("City", back_populates="users")
 
     def __repr__(self):
@@ -63,4 +71,3 @@ class Product(DeclarativeBase):
     name = Column(String)
     image = Column(String)
     shops = relationship("ShopProduct", back_populates="product")
-
