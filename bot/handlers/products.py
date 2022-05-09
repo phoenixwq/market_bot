@@ -8,8 +8,8 @@ from bot.db.utils import get_or_create
 from bot.db.models import User, Product
 from bot.web_scraper import Paginator, Scraper, Page
 from bot.filters import PaginateFilter
-from bot.handlers.utils import get_paginate_keyboard, send_page_to_user
-import re
+from bot.handlers.utils import get_paginate_keyboard, send_page_to_user, data_loader
+from geoalchemy2.shape import to_shape
 
 PAGE_SIZE = 3
 
@@ -34,20 +34,20 @@ async def search_start(message: types.Message, state: FSMContext):
 async def load_data(message: types.Message, state: FSMContext):
     with session() as s:
         user = get_or_create(s, User, chat_id=message.from_user.id)
-        if user.latitude is None or user.longitude is None:
+        point = user.point
+        if point is None:
             await message.answer(
                 "Product search is not possible without your geolocation, please use the command /location"
             )
             await state.clear()
             return
-        user_location = {
-            "longitude": user.longitude,
-            "latitude": user.latitude
-        }
-    page = Page(**user_location, product_name=message.text.lower())
+        point = to_shape(point)
+    page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
     scraper = Scraper()
     await message.answer("Loading...")
-    data = scraper.parse(page)
+    scraper.parse(page)
+    data = scraper.get_data()
+    data_loader(message, data)
     paginator = Paginator(data, PAGE_SIZE)
     if paginator.size == 0:
         await message.answer("Unfortunately I couldn't find anything, please try again")
@@ -57,8 +57,7 @@ async def load_data(message: types.Message, state: FSMContext):
         reply_markup=get_paginate_keyboard(paginator)
     )
     await state.update_data(paginator=paginator)
-    await send_page_to_user(message.from_user.id, paginator.current(), text='Add to favorites',
-                            callback_data='add_product_to_favorites')
+    await send_page_to_user(message.from_user.id, paginator.current())
     await state.set_state(SearchProduct.load_data)
 
 
@@ -79,21 +78,6 @@ async def page_view(message: types.Message, state: FSMContext):
             products = paginator.previous()
     except IndexError:
         return await message.answer("page not found!")
-
     await state.update_data(paginator=paginator)
-    await send_page_to_user(message.from_user.id, products, text='Add to favorites',
-                            callback_data='add_product_to_favorites')
+    await send_page_to_user(message.from_user.id, products)
     await message.answer(f"page: {paginator.current_page + 1}", reply_markup=get_paginate_keyboard(paginator))
-
-
-@router.callback_query(lambda query: query.data == "add_product_to_favorites", )
-async def add_product_in_user_favorite(call: types.CallbackQuery):
-    name, price, shop = re.match(r"name: ([\w\W]*)\nprice: ([\w\W]*)\nshop: ([\w\W]*)", call.message.caption).groups()
-    image = call.message.photo[0].file_id
-    url = call.message.caption_entities[0].url
-    with session() as s:
-        user = get_or_create(s, User, chat_id=call.from_user.id)
-        product = get_or_create(s, Product, name=name, price=price, shop=shop, url=url, image=image)
-        user.products.append(product)
-        s.add(product)
-    await call.answer(text="Product added to favorites!", show_alert=True)

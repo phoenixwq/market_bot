@@ -1,14 +1,9 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from pathlib import Path
-import os
-
-BASE_DIR = Path(__file__).resolve().parent
+import chromedriver_binary
 
 
 class WebDriver:
-    driver_path = os.path.join(BASE_DIR, "chromedriver")
-
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, 'instance'):
             cls.instance = super(WebDriver, cls).__new__(cls)
@@ -22,7 +17,7 @@ class WebDriver:
         chrome_options.add_experimental_option('prefs', {
             'geolocation': False,
         })
-        return webdriver.Chrome(self.driver_path, options=chrome_options)
+        return webdriver.Chrome(options=chrome_options)
 
     def get_page_content(self, url: str) -> str:
         self._driver.get(url)
