@@ -13,7 +13,6 @@ def search_by_query(q: str):
     return {
         "lat": float(data["lat"]),
         "lon": float(data["lon"]),
-        "city": data["address"]["city"]
     }
 
 
