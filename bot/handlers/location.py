@@ -23,8 +23,7 @@ async def set_users_location(message: types.Message, state: FSMContext):
 async def set_users_location(message: types.Message, state: FSMContext):
     with session() as s:
         user = s.query(User).filter_by(chat_id=message.from_user.id).first()
-        user.latitude = message.location.latitude
-        user.longitude = message.location.longitude
+        user.point = f"POINT({message.location.latitude} {message.location.longitude})"
         s.add(user)
 
     await message.answer("Successful!")

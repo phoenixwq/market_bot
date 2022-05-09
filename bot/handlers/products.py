@@ -8,8 +8,8 @@ from bot.db.utils import get_or_create
 from bot.db.models import User, Product
 from bot.web_scraper import Paginator, Scraper, Page
 from bot.filters import PaginateFilter
-from bot.handlers.utils import get_paginate_keyboard, send_page_to_user
-import re
+from bot.handlers.utils import get_paginate_keyboard, send_page_to_user, data_loader
+from geoalchemy2.shape import to_shape
 
 PAGE_SIZE = 3
 
@@ -34,20 +34,20 @@ async def search_start(message: types.Message, state: FSMContext):
 async def load_data(message: types.Message, state: FSMContext):
     with session() as s:
         user = get_or_create(s, User, chat_id=message.from_user.id)
-        if user.latitude is None or user.longitude is None:
+        point = user.point
+        if point is None:
             await message.answer(
                 "Product search is not possible without your geolocation, please use the command /location"
             )
             await state.clear()
             return
-        user_location = {
-            "longitude": user.longitude,
-            "latitude": user.latitude
-        }
-    page = Page(**user_location, product_name=message.text.lower())
+        point = to_shape(point)
+    page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
     scraper = Scraper()
     await message.answer("Loading...")
-    data = scraper.parse(page)
+    scraper.parse(page)
+    data = scraper.get_data()
+    data_loader(message, data)
     paginator = Paginator(data, PAGE_SIZE)
     if paginator.size == 0:
         await message.answer("Unfortunately I couldn't find anything, please try again")
@@ -79,5 +79,5 @@ async def page_view(message: types.Message, state: FSMContext):
     except IndexError:
         return await message.answer("page not found!")
     await state.update_data(paginator=paginator)
+    await send_page_to_user(message.from_user.id, products)
     await message.answer(f"page: {paginator.current_page + 1}", reply_markup=get_paginate_keyboard(paginator))
-
