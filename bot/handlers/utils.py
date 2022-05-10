@@ -6,6 +6,7 @@ from bot.db.base import session
 from bot.db.utils import *
 import json
 from bot import geocoder
+from sqlalchemy import func
 
 
 def get_paginate_keyboard(paginator) -> types.ReplyKeyboardMarkup:
@@ -54,7 +55,7 @@ def data_to_message(data: List[dict]) -> str:
 def data_loader(message: types.Message, data):
     with session() as s:
         request = get_or_create(s, Request, query=message.text.lower())
-        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
+        user = get_user(s, message.from_user.id)
         city = user.city
         request_city = get_or_create(s, RequestCity, request=request, city=city)
         s.add_all([request, user, request_city])
@@ -62,8 +63,11 @@ def data_loader(message: types.Message, data):
             product_id = int(row["id"])
             product_name = row["name"]
             product_image = row["image"]
-            product = s.query(Product).filter_by(site_id=product_id).one_or_none()
-            if product is None:
+            try:
+                product = s.scalars(
+                    select(Product).where(Product.site_id == product_id)
+                ).one()
+            except NoResultFound:
                 product = Product()
             product.site_id = product_id,
             product.name = product_name,
@@ -74,8 +78,13 @@ def data_loader(message: types.Message, data):
                 address = local_data[1]
                 price = local_data[2]
                 shop = get_or_create(s, Shop, name=shop_name)
-                shop_product = s.query(ShopProduct).filter_by(shop=shop, product=product, address=address).one_or_none()
-                if shop_product is None:
+                try:
+                    shop_product = s.scalars(
+                        select(ShopProduct).where(Shop.id == shop.id,
+                                                  Product.id == product.id,
+                                                  ShopProduct.address == address)
+                    ).one()
+                except NoResultFound:
                     shop_product = ShopProduct()
                 point = geocoder.search_by_query(address)
                 if point is not None:
@@ -92,25 +101,38 @@ def data_loader(message: types.Message, data):
 def search(message: types.Message):
     with session() as s:
         query = message.text.lower()
-        user = s.query(User).filter_by(chat_id=message.from_user.id).first()
-        request_count = s.query(Request, RequestCity, City)\
-            .filter(Request.id == RequestCity.request_id, RequestCity.city_id == City.id)\
-            .filter(Request.query.ilike(f"%{query}%"), City.id == user.city.id).count()
+        user = get_user(s, message.from_user.id)
+        q = select(func.count('*')).select_from(Request) \
+            .join(RequestCity, Request.id == RequestCity.request_id) \
+            .join(City, City.id == RequestCity.city_id) \
+            .where(Request.query.ilike(f"%{query}%"), City.id == user.city.id)
+        request_count = s.execute(q).scalar()
         if request_count != 0:
-            products_query = s.query(Product, ShopProduct, Shop, City) \
-                .filter(Product.id == ShopProduct.product_id,
-                        ShopProduct.shop_id == Shop.id,
-                        ShopProduct.city_id == City.id) \
-                .filter(Product.name.ilike(f"%{query}%")) \
-                .filter(ShopProduct.city_id == user.city.id)
+            from sqlalchemy import distinct
+            from geoalchemy2 import func as geo_func
+            products = select(distinct(Product.id), Product.name, Product.image,
+                              geo_func.ST_Distance(ShopProduct.address_point, user.point)) \
+                .join(ShopProduct, Product.id == ShopProduct.product_id) \
+                .where(ShopProduct.city_id == user.city.id) \
+                .where(Product.name.ilike(f"%{query}%")) \
+                .where(ShopProduct.address_point != None) \
+                .order_by(geo_func.ST_Distance(ShopProduct.address_point, user.point))
+            product_detail = select(ShopProduct, Shop, geo_func.ST_Distance(ShopProduct.address_point, user.point)) \
+                .join(ShopProduct, Shop.id == ShopProduct.shop_id) \
+                .where(ShopProduct.city_id == user.city.id) \
+                .where(ShopProduct.address_point != None)
             data = []
-            for product, _, _, _ in products_query.distinct(Product.id).all():
+            for id, name, image, _ in s.execute(products).all():
                 product_data = {
-                    "name": product.name,
-                    "image": product.image
+                    "name": name,
+                    "image": image
                 }
                 l = []
-                for _, shop_product, shop, city in products_query.filter(Product.id == product.id):
+                for shop_product, shop, distance in s.execute(
+                        product_detail.where(ShopProduct.product_id == id)\
+                        .order_by(geo_func.ST_Distance(ShopProduct.address_point, user.point))
+
+                ).all():
                     l.append(
                         [shop.name, shop_product.address, shop_product.price]
                     )
@@ -118,3 +140,10 @@ def search(message: types.Message):
                 data.append(product_data)
             return data
         return None
+
+
+def get_user(session, chat_id):
+    user = session.scalars(
+        select(User).where(User.chat_id == chat_id)
+    ).first()
+    return user
