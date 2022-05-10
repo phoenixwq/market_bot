@@ -1,9 +1,11 @@
-import asyncio, logging, sys
+import asyncio
+import logging
+import sys
 from os import getenv
 from aiogram import Bot, Dispatcher
 from bot.commands import set_commands
-from bot.handlers import common, products, location
 from bot.db import create_db
+from bot.handlers import common, products, location
 
 
 async def main():

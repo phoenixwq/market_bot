@@ -5,6 +5,7 @@ from bot.db.base import session
 from bot.db.utils import *
 from sqlalchemy import func
 from geoalchemy2 import func as geo_func
+from bot.settings import images_path
 
 
 def get_paginate_keyboard() -> types.ReplyKeyboardMarkup:
@@ -18,8 +19,8 @@ def get_paginate_keyboard() -> types.ReplyKeyboardMarkup:
 async def send_data_to_user(chat_id: int, data: list):
     photo = data[2]
     if photo is None or photo == "":
-        photo = types.URLInputFile("https://fisnikde.com/wp-content/uploads/2019/01/broken-image.png",
-                                   filename=data[1])
+        photo = types.FSInputFile(images_path + "image_not_found.png",
+                                  filename="image_not_found.png")
     else:
         photo = types.URLInputFile(photo, filename=data[1])
 
@@ -52,7 +53,7 @@ def search(message: types.Message):
                 .order_by(geo_func.ST_Distance(ShopProduct.address_point, user.point))
             for row in s.execute(products).all():
                 yield row
-        return None
+    yield None
 
 
 def get_user(session, chat_id):

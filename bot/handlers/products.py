@@ -42,13 +42,14 @@ async def find_product(message: types.Message, state: FSMContext):
             return
         point = to_shape(point)
     data_iterator = search(message)
-    if not data_iterator:
+    search_first_data = next(data_iterator)
+    if search_first_data is None:
         await message.answer("Loading...")
         page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
         scraper = Scraper()
         data_iterator = scraper.parse(page, only_first=True)
     try:
-        fisrt_data = next(data_iterator)
+        fisrt_data = search_first_data or next(data_iterator)
     except StopIteration:
         await message.answer("Unfortunately I couldn't find anything, please try again")
         await state.clear()

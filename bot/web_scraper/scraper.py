@@ -1,11 +1,9 @@
-import csv, re, os
+import csv
+import re
 from datetime import datetime
-from pathlib import Path
 from bs4 import BeautifulSoup
+from bot.settings import CSV_DELIMITER, csv_path
 from .driver import WebDriver
-
-BASE_DIR = Path(__file__).resolve().parent
-CSV_DELIMITER = "#"
 
 
 class Page:
@@ -66,11 +64,10 @@ class Scraper:
                     address = local_info.find("div", class_="_9vba8w").text
                     price = local_info.find("span", class_="_f9pg1j5").text
                     yield [product_id, product_name, image_url, price, shop, address]
-        return None
 
     def parse_and_load(self, page: Page):
         filename = str(datetime.now().timestamp()) + ".csv"
-        path_file = os.path.join(BASE_DIR, f"data/{filename}")
+        path_file = csv_path + f"{filename}"
         with open(path_file, "w", encoding='UTF8', newline='') as csv_file:
             writer = csv.writer(csv_file, delimiter=CSV_DELIMITER)
             header = ["id", "name", "image", "price", "shop", "address"]
