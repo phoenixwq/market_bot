@@ -1,9 +1,7 @@
-import asyncio
-import logging
-import sys
+import asyncio, logging, sys
 from os import getenv
 from aiogram import Bot, Dispatcher
-from commands import set_commands
+from bot.commands import set_commands
 from bot.handlers import common, products, location
 from bot.db import create_db
 

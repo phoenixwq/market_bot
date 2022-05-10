@@ -1,12 +1,18 @@
+from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
+
+
 def get_or_create(session, model, **kwargs):
-    instance = session.query(model).filter_by(**kwargs).one_or_none()
-    if instance is None:
+    try:
+        instance = session.scalars(
+            select(model).filter_by(**kwargs)
+        ).one()
+    except NoResultFound:
         instance = model(**kwargs)
-        try:
-            session.add(instance)
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
+        session.add(instance)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     return instance

@@ -4,13 +4,11 @@ from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram import types
 from bot.db.base import session
-from bot.db.utils import get_or_create
-from bot.db.models import User, Product
 from bot.web_scraper import Paginator, Scraper, Page
 from bot.filters import PaginateFilter
-from bot.handlers.utils import get_paginate_keyboard, send_page_to_user, data_loader
+from bot.handlers.utils import get_paginate_keyboard, send_page_to_user, data_loader, search
 from geoalchemy2.shape import to_shape
-
+from .utils import get_user
 PAGE_SIZE = 3
 
 router = Router()
@@ -33,7 +31,7 @@ async def search_start(message: types.Message, state: FSMContext):
 @router.message(SearchProduct.product_name, ContentTypesFilter(content_types=["text"]))
 async def load_data(message: types.Message, state: FSMContext):
     with session() as s:
-        user = get_or_create(s, User, chat_id=message.from_user.id)
+        user = get_user(s, message.from_user.id)
         point = user.point
         if point is None:
             await message.answer(
@@ -42,15 +40,18 @@ async def load_data(message: types.Message, state: FSMContext):
             await state.clear()
             return
         point = to_shape(point)
-    page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
-    scraper = Scraper()
-    await message.answer("Loading...")
-    scraper.parse(page)
-    data = scraper.get_data()
-    data_loader(message, data)
+    data = search(message)
+    if not data:
+        await message.answer("Loading...")
+        page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
+        scraper = Scraper()
+        scraper.parse(page)
+        data = scraper.get_data()
+        data_loader(message, data)
     paginator = Paginator(data, PAGE_SIZE)
     if paginator.size == 0:
         await message.answer("Unfortunately I couldn't find anything, please try again")
+        await state.clear()
         return
     await message.answer(
         f"{message.from_user.first_name.capitalize()}, here's what I found!",
