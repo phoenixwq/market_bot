@@ -5,8 +5,8 @@ from contextlib import contextmanager
 import typing
 import os
 
-engine = create_engine(os.environ.get('DATABASE_URL'), echo=True)
-Session = sessionmaker(bind=engine)
+engine = create_engine(os.environ.get('DATABASE_URL'), echo=True, future=True)
+Session = sessionmaker(bind=engine, future=True)
 current_session = scoped_session(Session)
 
 DeclarativeBase = declarative_base()

@@ -3,9 +3,9 @@ import logging
 import sys
 from os import getenv
 from aiogram import Bot, Dispatcher
-from commands import set_commands
-from bot.handlers import common, favorites, products, location
+from bot.commands import set_commands
 from bot.db import create_db
+from bot.handlers import common, products, location
 
 
 async def main():
@@ -13,7 +13,6 @@ async def main():
     dp = Dispatcher()
 
     dp.include_router(common.router)
-    dp.include_router(favorites.router)
     dp.include_router(products.router)
     dp.include_router(location.router)
     await set_commands(bot)
