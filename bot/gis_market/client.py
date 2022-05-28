@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from geocoder import search_by_query
 from geopy import distance
 from selenium import webdriver
-from typing import Iterator
+from typing import Iterator, Union
 import chromedriver_binary
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class GisMarketClient:
                 for product in products:
                     yield product
 
-    def __parse_product(self, product) -> Iterator[tuple]:
+    def __parse_product(self, product) -> Iterator[tuple[Union[int, float, str]]]:
         driver = self._get_driver()
         product_url = product.find("a", class_="_1rehek").get('href')
         product_id = re.search(r"\d+", product_url).group(0)
