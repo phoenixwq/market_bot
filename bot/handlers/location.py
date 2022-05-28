@@ -17,13 +17,13 @@ class Location(StatesGroup):
 
 
 @router.message(commands=["location"])
-async def set_users_location(message: types.Message, state: FSMContext):
+async def get_user_location_start(message: types.Message, state: FSMContext):
     await message.answer("Please send your geo-location!")
     await state.set_state(Location.waiting_location)
 
 
 @router.message(Location.waiting_location, ContentTypesFilter(content_types=["location"]))
-async def set_users_location(message: types.Message, state: FSMContext):
+async def set_user_location(message: types.Message, state: FSMContext):
     with session() as s:
         user = get_user(s, message.from_user.id)
         lat = message.location.latitude
