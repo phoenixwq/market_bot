@@ -48,7 +48,6 @@ async def find_product(message: types.Message, state: FSMContext):
             product, data_iterator = await search(message, point)
         except ValueError:
             await message.answer("Unfortunately I couldn't find anything, please try again!")
-            await state.clear()
             return
         await message.answer(
             f"{message.from_user.first_name.capitalize()}, here's what I found!",

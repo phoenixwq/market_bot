@@ -96,13 +96,13 @@ class GisMarketClient:
         except AttributeError:
             image_url = None
         for local_info in product_detail_soup.find_all("div", {"class": "_1xqczd6"}):
-            shop = local_info.find("div", class_="_b8wvvmq").text
-            address = local_info.find("div", class_="_9vba8w").text
-            price = local_info.find("span", class_="_f9pg1j5").text
+            shop_div = local_info.find("div", class_="_b8wvvmq")
+            address_div = local_info.find("div", class_="_9vba8w")
+            price_div = local_info.find("span", class_="_f9pg1j5")
+            shop = shop_div.text if shop_div else None
+            price = price_div.text if price_div else None
+            address = address_div.text if address_div else None
             location = search_by_query(address)
             if location:
-                distance_ = distance.distance(
-                    (location["lat"], location["lon"]),
-                    self.location
-                )
+                distance_ = distance.distance(location, self.location)
                 yield product_id, product_name, image_url, price, shop, address, distance_

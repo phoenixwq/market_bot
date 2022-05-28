@@ -15,6 +15,7 @@ async def main():
     dp.include_router(common.router)
     dp.include_router(products.router)
     dp.include_router(location.router)
+
     await set_commands(bot)
     await dp.start_polling(bot)
 
