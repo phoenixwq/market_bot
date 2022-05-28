@@ -5,8 +5,8 @@ from sqlalchemy import select, func
 from geoalchemy2 import func as geo_func
 from bot.settings import images_path
 from bot.db.models import *
-from gis_market.client import GisMarketProduct, GisMarketClient
-from typing import Iterator
+from bot.gis_market.client import GisMarketProduct, GisMarketClient
+from typing import Iterator, Tuple
 
 
 def get_paginate_keyboard() -> types.ReplyKeyboardMarkup:
@@ -50,7 +50,7 @@ def search_in_db(message: types.Message) -> Iterator[GisMarketProduct]:
                 yield GisMarketProduct(*row)
 
 
-async def search(message: types.Message, point) -> tuple[GisMarketProduct, Iterator[GisMarketProduct]]:
+async def search(message: types.Message, point) -> Tuple[GisMarketProduct, Iterator[GisMarketProduct]]:
     try:
         data_iterator = search_in_db(message)
         product = next(data_iterator)

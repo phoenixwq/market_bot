@@ -1,9 +1,9 @@
 import requests
-from typing import Union
+from typing import Union, Tuple
 nominatim_url = "https://nominatim.openstreetmap.org/"
 
 
-def search_by_query(q: str) -> Union[tuple[int, int], None]:
+def search_by_query(q: str) -> Union[Tuple[int, int], None]:
     url = nominatim_url + f"search?q={q}&format=json&addressdetails=1&limit=1"
     data = requests.get(url).json()
     if not data:
