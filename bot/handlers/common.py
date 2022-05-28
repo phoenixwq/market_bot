@@ -12,4 +12,4 @@ async def start(message: types.Message):
     user = message.from_user
     with session() as s:
         get_or_create(s, User, chat_id=user.id)
-    await message.answer(f"Hi, {user.first_name.capitalize()}, i'm a bot that finds goods in your city")
+    await message.answer(f"Hi, {user.first_name.capitalize()}, i'm a bot that finds goods in your city!")
