@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from geocoder import search_by_query
 from geopy import distance
 from selenium import webdriver
+from typing import Iterator
 import chromedriver_binary
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,16 @@ gis_market_url = "https://2gis.ru"
 
 
 class GisMarketProduct:
-    def __init__(self, product_id, product_name, image_url, price, shop, address, distance):
+    def __init__(
+            self,
+            product_id: int,
+            product_name: str,
+            image_url: str,
+            price: int,
+            shop: str,
+            address: str,
+            distance: float
+    ):
         self.data = {
             "id": product_id,
             "name": product_name,
@@ -23,45 +33,45 @@ class GisMarketProduct:
         }
 
     @property
-    def id(self):
+    def id(self) -> int:
         return self.data.get('id')
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.data.get("name")
 
     @property
-    def image(self):
+    def image(self) -> str:
         return self.data.get("image")
 
     @property
-    def price(self):
+    def price(self) -> int:
         return self.data.get("price")
 
     @property
-    def shop(self):
+    def shop(self) -> str:
         return self.data.get("shop")
 
     @property
-    def address(self):
+    def address(self) -> str:
         return self.data.get("address")
 
     @property
-    def distance(self):
+    def distance(self) -> float:
         return self.data.get("distance")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"name: {self.name}\nshop: {self.shop}\naddress: {self.address}\nprice: {self.price}р."
 
 
 class GisMarketClient:
-    def __init__(self, location):
+    def __init__(self, location: tuple[int, int]):
         self.location = location
 
-    def _get_driver(self):
+    def _get_driver(self) -> webdriver.Chrome:
         return webdriver.Chrome()
 
-    def search(self, term: str, duration: bool = False):
+    def search(self, term: str, duration: bool = False) -> Iterator[GisMarketProduct]:
         search_url = "/search/{0}/tab/market/?m={2}%2C{1}%2F17.65".format(
             term, *self.location
         )
@@ -83,7 +93,7 @@ class GisMarketClient:
                 for product in products:
                     yield product
 
-    def __parse_product(self, product):
+    def __parse_product(self, product) -> Iterator[tuple]:
         driver = self._get_driver()
         product_url = product.find("a", class_="_1rehek").get('href')
         product_id = re.search(r"\d+", product_url).group(0)
