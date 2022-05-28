@@ -4,11 +4,13 @@ from aiogram.dispatcher.fsm.context import FSMContext
 from aiogram.dispatcher.fsm.state import State, StatesGroup
 from aiogram import types
 from bot.db.base import session
-from bot.web_scraper import Scraper, Page
-from bot.filters import PaginateFilter
-from bot.handlers.utils import get_paginate_keyboard, send_data_to_user, search
 from geoalchemy2.shape import to_shape
-from .utils import get_user
+from bot.handlers.utils import (
+    get_paginate_keyboard,
+    send_data_to_user,
+    search,
+    get_user
+)
 
 PAGE_SIZE = 3
 
@@ -36,38 +38,34 @@ async def find_product(message: types.Message, state: FSMContext):
         point = user.point
         if point is None:
             await message.answer(
-                "Product search is not possible without your geolocation, please use the command /location"
+                "Product search is not possible without your geolocation, "
+                "please use the command /location"
             )
             await state.clear()
             return
         point = to_shape(point)
-    data_iterator = search(message)
-    search_first_data = next(data_iterator)
-    if search_first_data is None:
-        await message.answer("Loading...")
-        page = Page(latitude=point.x, longitude=point.y, product_name=message.text.lower())
-        scraper = Scraper()
-        data_iterator = scraper.parse(page, only_first=True)
-    try:
-        fisrt_data = search_first_data or next(data_iterator)
-    except StopIteration:
-        await message.answer("Unfortunately I couldn't find anything, please try again")
-        await state.clear()
-        return
-    await message.answer(
-        f"{message.from_user.first_name.capitalize()}, here's what I found!",
-        reply_markup=get_paginate_keyboard()
-    )
-    await state.update_data(data_iterator=data_iterator)
-    await send_data_to_user(message.from_user.id, fisrt_data)
-    await state.set_state(SearchProduct.waiting_to_find)
+        try:
+            product, data_iterator = await search(message, point)
+        except ValueError:
+            await message.answer("Unfortunately I couldn't find anything, please try again!")
+            await state.clear()
+            return
+        await message.answer(
+            f"{message.from_user.first_name.capitalize()}, here's what I found!",
+            reply_markup=get_paginate_keyboard()
+        )
+        await state.update_data(data_iterator=data_iterator)
+        await send_data_to_user(message.from_user.id, product)
+        await state.set_state(SearchProduct.waiting_to_find)
 
 
-@router.message(SearchProduct.waiting_to_find, ContentTypesFilter(content_types=["text"]), PaginateFilter())
+@router.message(SearchProduct.waiting_to_find, ContentTypesFilter(content_types=["text"]))
 async def page_view(message: types.Message, state: FSMContext):
     user_message = message.text.lower()
+    if user_message not in ("next", "exit"):
+        return
     if user_message == "exit":
-        await message.answer("Exit", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer("exit", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()
         return
 
@@ -78,5 +76,5 @@ async def page_view(message: types.Message, state: FSMContext):
             row = next(data_iterator)
             await send_data_to_user(message.from_user.id, row)
     except StopIteration:
-        await message.answer("404: not found", reply_markup=types.ReplyKeyboardRemove())
+        await message.answer("Completed", reply_markup=types.ReplyKeyboardRemove())
         await state.clear()

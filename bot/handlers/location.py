@@ -18,7 +18,7 @@ class Location(StatesGroup):
 
 @router.message(commands=["location"])
 async def set_users_location(message: types.Message, state: FSMContext):
-    await message.answer("Please send your geo-location")
+    await message.answer("Please send your geo-location!")
     await state.set_state(Location.waiting_location)
 
 
@@ -30,7 +30,7 @@ async def set_users_location(message: types.Message, state: FSMContext):
         lon = message.location.longitude
         city_name = get_city_by_coords(lat, lon)
         if city_name is None:
-            await message.answer("Unable to determine your geolocation")
+            await message.answer("Unable to determine your geolocation!")
             return
         city = get_or_create(s, City, name=city_name)
         user.point = f"POINT({lat} {lon})"
