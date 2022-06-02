@@ -1,14 +1,9 @@
-import logging, re
-from bs4 import BeautifulSoup
-from bot.geocoder import search_by_query
-from geopy import distance
-from selenium import webdriver
+import re
 from typing import Iterator, Union, Tuple
-import chromedriver_binary
-
-logger = logging.getLogger(__name__)
-
-gis_market_url = "https://2gis.ru"
+import requests
+from bs4 import BeautifulSoup
+from geopy import distance
+from bot.geocoder import search_by_query
 
 
 class GisMarketProduct:
@@ -67,18 +62,21 @@ class GisMarketProduct:
 class GisMarketClient:
     def __init__(self, location: Tuple[int, int]):
         self.location = location
-
-    def _get_driver(self) -> webdriver.Chrome:
-        return webdriver.Chrome()
+        self.base_url = "https://2gis.ru"
+        self._headers = {
+            "referer": "https://www.google.com/",
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36",
+        }
 
     def search(self, term: str, duration: bool = False) -> Iterator[GisMarketProduct]:
         search_url = "/search/{0}/tab/market/?m={2}%2C{1}%2F17.65".format(
             term, *self.location
         )
-        driver = self._get_driver()
-        driver.get(gis_market_url + search_url)
-        html = driver.page_source
-
+        resp = requests.get(
+            self.base_url + search_url,
+            headers=self._headers
+        )
+        html = resp.content
         products_soup = BeautifulSoup(html, "html.parser")
         for product_soup in products_soup.find_all("div", {"class": "_1k2x33mp"}):
             products = []
@@ -94,16 +92,18 @@ class GisMarketClient:
                     yield product
 
     def __parse_product(self, product) -> Iterator[Tuple[Union[int, float, str]]]:
-        driver = self._get_driver()
         product_url = product.find("a", class_="_1rehek").get('href')
         product_id = re.search(r"\d+", product_url).group(0)
         product_name = product.find("span", class_="_hc69qa").text
-        driver.get(gis_market_url + product_url)
-        product_detail_html = driver.page_source
+        resp = requests.get(
+            self.base_url + product_url,
+            headers=self._headers
+        )
+        product_detail_html = resp.content
         product_detail_soup = BeautifulSoup(product_detail_html, "html.parser")
         try:
-            image_url = product_detail_soup.find("div", class_="_1l59x1q").find('img')['src']
-        except AttributeError:
+            image_url = product_detail_soup.find("div", class_="_2b7zvfy").find('img')['src']
+        except (AttributeError, TypeError):
             image_url = None
         for local_info in product_detail_soup.find_all("div", {"class": "_1xqczd6"}):
             shop_div = local_info.find("div", class_="_b8wvvmq")
